@@ -23,6 +23,7 @@
            android.util.Base64
            [android.content Intent Context BroadcastReceiver IntentFilter]
            [android.net.wifi WifiManager]
+           [android.net NetworkInfo]
            (android.view View Menu MenuItem Gravity)
            (android.app Activity Fragment FragmentTransaction IntentService)
            neko.App))
@@ -63,7 +64,7 @@
       (log/i "handling boot completed...")
       (.startService App/instance (intent App/instance '.AutoBackupService {:action "register"})))
     WifiManager/NETWORK_STATE_CHANGED_ACTION
-    (when (-> i (.getParcelableExtra WifiManager/EXTRA_NETWORK_INFO) .isConnected)
+    (when (-> ^NetworkInfo (.getParcelableExtra i WifiManager/EXTRA_NETWORK_INFO) .isConnected)
       (.startService ctx (intent ctx '.AutoBackupService {:action "sync"})))
     (log/w "no handler for intent:" i)))
 
@@ -110,8 +111,8 @@
 
 (def show!
   (let [current (atom nil)]
-    (fn[^Fragment fragment]
-      (let [fm (.getFragmentManager ^Activity (*a))
+    (fn[^Fragment fragment ^Activity a]
+      (let [fm (.getFragmentManager a)
             ft (.beginTransaction fm)]
         (if @current
           (.hide ft @current))
@@ -158,8 +159,8 @@
           (reset! result {:status :failure :error e}))
         (finally (done @result))))))
 
-(defn run-backup [name]
-  (let [_ (show! @run-profile-fragment)
+(defn run-backup [name activity]
+  (let [_ (show! @run-profile-fragment activity)
         [^TextView run-log ^View close-btn] (find-views ^Fragment @run-profile-fragment ::run-log ::close-btn)
         logger (fn[& more] (on-ui (doto run-log
                                     (.append (clojure.string/join " " more))
@@ -184,9 +185,9 @@
     (log/d "fill id:" id " with " (data (name id) ""))
     (set-value (find-view view id) (data (name id) ""))))
 
-(defn edit-profile [name]
+(defn edit-profile [name activity]
   (log/d "edit profile " name)
-  (show! @edit-profile-fragment)
+  (show! @edit-profile-fragment activity)
   (value! (.getView ^Fragment @edit-profile-fragment) (@profiles name {})))
 
 (defn- mk-list-profiles-fragment [activity]
@@ -211,9 +212,9 @@
       (fn [menu ^View v ^android.widget.AdapterView$AdapterContextMenuInfo info]
         (let [name (.getItemAtPosition ^ListView v (.-position info))]
           (make-menu menu [[:item {:title "Run"
-                                   :on-click (fn[_] (run-backup name))}]
+                                   :on-click (fn[_] (run-backup name activity))}]
                            [:item {:title "Edit"
-                                   :on-click (fn [_] (edit-profile name))}]
+                                   :on-click (fn [_] (edit-profile name activity))}]
                            [:item {:title "Delete"
                                    :on-click (fn[_] (swap! profiles dissoc name))}]])))}]]))
 
@@ -245,9 +246,9 @@
                               :layout-width :fill :layout-height :wrap
                               :gravity Gravity/CENTER}
               [:button {:text "Save"
-                        :on-click (fn [_] (save-profile))}]
+                        :on-click (fn [_] (save-profile activity))}]
               [:button {:text "Cancel"
-                        :on-click (fn [_] (show! @list-profiles-fragment))}]]]))
+                        :on-click (fn [_] (show! @list-profiles-fragment activity))}]]]))
 
 (defn- mk-run-profile-fragment [activity]
   (simple-fragment activity [:linear-layout {:id-holder true :layout-width :fill
@@ -260,12 +261,12 @@
                                             :layout-height :fill :layout-weight 1}]
                                [:button {:id ::close-btn
                                          :text "Close" :visibility View/INVISIBLE
-                                         :on-click (fn[_] (show! @list-profiles-fragment))}]]]]))
+                                         :on-click (fn[_] (show! @list-profiles-fragment activity))}]]]]))
 
-(defn save-profile []
+(defn save-profile [activity]
   (let [profile (value (.getView ^Fragment @edit-profile-fragment))]
     (swap! profiles assoc (profile "name") profile)
-    (show! @list-profiles-fragment)))
+    (show! @list-profiles-fragment activity)))
 
 (defactivity backup.droid.MainActivity
   :key :main
@@ -276,16 +277,16 @@
             (def edit-profile-fragment (delay (mk-edit-profile-fragment this)))
             (def run-profile-fragment (delay (mk-run-profile-fragment this)))
             (on-ui
-             (set-content-view! (*a)
+             (set-content-view! this
                                 [:frame-layout {:id ::main-container}])
-             (show! @list-profiles-fragment)))
+             (show! @list-profiles-fragment this)))
   (onCreateOptionsMenu [this ^Menu menu]
                        (-> menu (.add "Add Profile")
                            (.setOnMenuItemClickListener
                             (reify
                               android.view.MenuItem$OnMenuItemClickListener
                               (onMenuItemClick [_ item]
-                                (edit-profile nil)
+                                (edit-profile nil this)
                                 true))))
                        true)
   (onRestart [this]
