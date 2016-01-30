@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="backup.droid"
+          android:versionCode="{{version-code}}"
+          android:versionName="{{version-name}}" >
+
+    <uses-sdk android:minSdkVersion="15"
+              android:targetSdkVersion="{{target-version}}" />
+
+    <application
+        android:name="neko.App"
+        android:icon="@drawable/ic_launcher"
+        android:label="backup-droid">
+        <activity android:name=".SplashActivity"
+                  android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name='backup.droid.MAIN'/>
+                <category android:name='android.intent.category.DEFAULT'/>
+            </intent-filter>
+        </activity>
+        <service android:name=".AutoBackupService"></service>
+    </application>
+    <receiver android:name=".MainReceiver">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        </intent-filter>
+    </receiver>
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    {{#debug-build}}
+    <!-- Inside this section the permission will work only in debug builds (this is -->
+    <!-- needed for remote REPL). If your application logic requires Internet -->
+    <!-- permission too, move it out of the section. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    {{/debug-build}}
+</manifest>
