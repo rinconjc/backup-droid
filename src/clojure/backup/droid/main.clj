@@ -207,7 +207,7 @@
                 profiles
                 #(or (keys %) []))
       :on-item-click (fn [^AdapterView v _ position _]
-                       (run-backup (.getItemAtPosition v position)))
+                       (run-backup (.getItemAtPosition v position) activity))
       :on-create-context-menu
       (fn [menu ^View v ^android.widget.AdapterView$AdapterContextMenuInfo info]
         (let [name (.getItemAtPosition ^ListView v (.-position info))]
